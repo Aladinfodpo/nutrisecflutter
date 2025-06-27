@@ -1,4 +1,4 @@
-package com.example.nutrisec
+package com.nutrisec.nutrisec
 
 import io.flutter.embedding.android.FlutterActivity
 
