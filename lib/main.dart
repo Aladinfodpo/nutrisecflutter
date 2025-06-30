@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'user.dart';
+import 'food.dart';
+import 'day.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +58,7 @@ class MyApp extends StatelessWidget {
 var routePages = {
       '/' : (BuildContext context) => MainPage(null,),
       SettingsPage.routeName: (BuildContext context) => MainPage(0),
+      AddFoodPage.routeName: (BuildContext context) => AddFoodPage(food: ((ModalRoute.of(context)?.settings.arguments ?? <String, dynamic>{}) as Map)['food'])
   };
 
 class MainPage extends StatefulWidget {
@@ -67,7 +70,7 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-const titles = ["Home", "Paramètres"];
+const titles = ["Home", "Days", "Foods", "Settings"];
 class _MainPageState extends State<MainPage> {
   late final List<Widget> pages;
   int indexDrawer = 0;
@@ -81,6 +84,8 @@ class _MainPageState extends State<MainPage> {
     setIndexPage(widget.indexPage ?? 0);
     pages = [
       HomePage(),
+      DaysPage(),
+      FoodsPage(),
       SettingsPage(),
     ];
   }
@@ -95,20 +100,12 @@ class _MainPageState extends State<MainPage> {
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
-          children: [
+          children: <Widget>[
             DrawerHeader(
               decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
               child: Image.asset("icon.png"),
             ),
-            ListTile(
-              title: const Text("Home"),
-              onTap: () {setIndexPage(0); Navigator.pop(context);}
-            ),
-            ListTile(
-              title: const Text("Paramètres"),
-              onTap: () {setIndexPage(1); Navigator.pop(context);}
-            ),
-          ],
+            ] +List.generate(titles.length, (index){return ListTile(title: Text(titles[index]), onTap: () {setIndexPage(index); Navigator.pop(context);},);}).toList(),
         ),
       ),
       body: Center(
