@@ -58,7 +58,8 @@ class MyApp extends StatelessWidget {
 var routePages = {
       '/' : (BuildContext context) => MainPage(null,),
       SettingsPage.routeName: (BuildContext context) => MainPage(0),
-      AddFoodPage.routeName: (BuildContext context) => AddFoodPage(food: ((ModalRoute.of(context)?.settings.arguments ?? <String, dynamic>{}) as Map)['food'])
+      AddFoodPage.routeName: (BuildContext context) => AddFoodPage(food: ((ModalRoute.of(context)?.settings.arguments ?? <String, dynamic>{}) as Map)['food']),
+      EditDayPage.routeName: (BuildContext context) => EditDayPage(day: ((ModalRoute.of(context)?.settings.arguments ?? <String, dynamic>{}) as Map)['day']),
   };
 
 class MainPage extends StatefulWidget {

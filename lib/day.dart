@@ -14,26 +14,35 @@ class Day {
     final int cardio;
 
     final int calories;
+    final int steps;
 
-    String getTitle(){
+    static String formatDate(int day, int month, int year){
       return "$day/$month/$year";
     }
 
-    int getID(){
+    String getTitle(){
+      return formatDate(day, month, year);
+    }
+
+    static int calculateID(int day, int month, int year){
       return year*12*31 + month*31 + day;
     }
 
-    const Day(this.day, this.month, this.year, this.foodIds, {this.cardio = 0, this.poids = 0, this.calories = 0});
+    int getID(){
+      return calculateID(day, month, year);
+    }
+
+    const Day(this.day, this.month, this.year, this.foodIds, {this.cardio = 0, this.poids = 0, this.calories = 0, this.steps = 0});
 
     Map<String, Object?> toMap() {
-        return {'id': getID(), "day" : day, "month" : month, "year" : year, "foods" : jsonEncode(foodIds), "cardio" : cardio, "poids" : poids, "calories" : calories};
+        return {'id': getID(), "day" : day, "month" : month, "year" : year, "foods" : jsonEncode(foodIds), "cardio" : cardio, "poids" : poids, "calories" : calories, "steps" : steps};
     }
 
     static Day fromMap(Map<String, Object?> map){
-        return Day(map['day'] as int, map['month'] as int, map['year'] as int, jsonDecode(map['foods'] as String), cardio : map['cardio'] as int, poids : map['poids'] as double, calories : map['calories'] as int);
+        return Day(map['day'] as int, map['month'] as int, map['year'] as int, jsonDecode(map['foods'] as String), cardio : map['cardio'] as int, poids : map['poids'] as double, calories : map['calories'] as int, steps: map['steps'] as int);
     }
 
-    Day copyWith(int? inDay, int? inMonth, int? inYear, List<FoodEaten>? inFoodIds, {int? inCardio, double? inPoids, int? inCalories}){
+    Day copyWith(int? inDay, int? inMonth, int? inYear, List<FoodEaten>? inFoodIds, {int? inCardio, double? inPoids, int? inCalories, int? inSteps}){
       return Day(
         inDay ?? day,
         inMonth ?? month,
@@ -41,8 +50,16 @@ class Day {
         inFoodIds ?? foodIds,
         cardio: inCardio ?? cardio,
         poids: inPoids ?? poids,
-        calories: inCalories ?? calories
+        calories: inCalories ?? calories,
+        steps: inSteps ?? steps
       );
+    }
+
+    static Future<Day> createToday() async{
+      DateTime date = DateTime.now();
+      final yesterday = await DayDB().getDays(number: 1);
+      final poids = yesterday.isEmpty ? 0.0 : yesterday[0].poids; 
+      return Day(date.day, date.month, date.year, [], poids: poids);
     }
 }
 
@@ -65,7 +82,7 @@ class DayDB {
       version: 1,
       onCreate: (db, version) {
         return db.execute(
-          'CREATE TABLE days(id INTEGER PRIMARY KEY, day INTEGER, month INTEGER, year INTEGER, foods TEXT, cardio INTEGER, poids REAL, calories INTEGER)',
+          'CREATE TABLE days(id INTEGER PRIMARY KEY, day INTEGER, month INTEGER, year INTEGER, foods TEXT, cardio INTEGER, poids REAL, calories INTEGER, steps INTEGER)',
         );
       },
     );
@@ -164,20 +181,52 @@ class _DaysPageState extends State<DaysPage> {
 
 }
 
-class DayEditPage extends StatefulWidget {
-  const DayEditPage({super.key});
+class EditDayPage extends StatefulWidget {
+  const EditDayPage({super.key, required this.day});
+
+  static const String routeName = "editDay";
+  final Day day;
 
   @override
-  State<DayEditPage> createState() => _DayEditPageState();
+  State<EditDayPage> createState() => _EditDayPageState();
 }
 
-class _DayEditPageState extends State<DayEditPage> {
-  _DayEditPageState();
+class _EditDayPageState extends State<EditDayPage> {
+  _EditDayPageState();
+  late int day;
+  late int month;
+  late int year;
+  late final List<FoodEaten> foods;
+
+  @override
+  void initState() {
+    super.initState();
+
+    foods = widget.day.foodIds;
+    day = widget.day.day;
+    month = widget.day.month;
+    year = widget.day.year;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox();
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        InkWell(
+          onTap: () async {
+            final DateTime? pickedDate = await showDatePicker(context: context, initialDate: DateTime(year, month, day), firstDate: DateTime(2025), lastDate: DateTime(2100),);
+            if(pickedDate != null){
+              day = pickedDate.day;
+              month = pickedDate.month;
+              year = pickedDate.year;
+            }
+          },
+          child: Card(
+            child: Text(Day.formatDate(day, month, year)),
+          ),
+        )
+      ],
+    );
   }
-
-
 }
