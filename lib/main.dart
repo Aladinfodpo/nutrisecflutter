@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'user.dart';
 import 'food.dart';
 import 'day.dart';
+import 'pedo.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+  await Permission.activityRecognition.request();
 
   final prefs = await SharedPreferences.getInstance();
   User().loadFromData(prefs);
+  await Pedo().loadFromData(prefs);
 
   runApp(const MyApp());
 }
@@ -131,7 +135,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
+  int? step;
   _HomePageState();
 
   @override
@@ -140,12 +144,29 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  void refresh(){
+    setState(() {
+      step = null;
+    });
+    Pedo().getTodayStep().then((res){setState(() => step = res);});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    refresh();
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Center(child: 
         Padding(padding: EdgeInsets.all(8.0),
-          child: Text("Bienvenue")
+          child: Column(children: [
+            const Text("Bienvenue"),
+            step == null ? CircularProgressIndicator() : Text("You have walked ${step!} step today !"),
+            ElevatedButton(onPressed: refresh, child: const Text("Reload"))
+          ])
         )
       );
   }

@@ -42,7 +42,7 @@ class Day {
         return Day(map['day'] as int, map['month'] as int, map['year'] as int, jsonDecode(map['foods'] as String), cardio : map['cardio'] as int, poids : map['poids'] as double, calories : map['calories'] as int, steps: map['steps'] as int);
     }
 
-    Day copyWith(int? inDay, int? inMonth, int? inYear, List<FoodEaten>? inFoodIds, {int? inCardio, double? inPoids, int? inCalories, int? inSteps}){
+    Day copyWith({int? inDay, int? inMonth, int? inYear, List<FoodEaten>? inFoodIds, int? inCardio, double? inPoids, int? inCalories, int? inSteps}){
       return Day(
         inDay ?? day,
         inMonth ?? month,
@@ -53,6 +53,11 @@ class Day {
         calories: inCalories ?? calories,
         steps: inSteps ?? steps
       );
+    }
+
+    static int getTodayId(){
+      DateTime date = DateTime.now();
+      return calculateID(date.day, date.month, date.year);
     }
 
     static Future<Day> createToday() async{
