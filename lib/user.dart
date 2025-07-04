@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:io';
 
 class User {
-  double baseCal = 0;
+  int baseCal = 0;
+  late bool isEmulator;
 
   static final User _singleton = User._internal();
+
+  Future<bool> _isEmulator() async {
+    final deviceInfo = DeviceInfoPlugin();
+
+    if (Platform.isAndroid) {
+      final androidInfo = await deviceInfo.androidInfo;
+      return !androidInfo.isPhysicalDevice;
+    } else if (Platform.isIOS) {
+      final iosInfo = await deviceInfo.iosInfo;
+      return !iosInfo.isPhysicalDevice;
+    }
+    return false;
+  }
+
   
   factory User() {
     return _singleton;
@@ -14,13 +30,14 @@ class User {
   
   User._internal();
   
-  void loadFromData(SharedPreferences pref){
-    baseCal =  pref.getDouble("baseCal") ?? 2700;
+  Future<void> loadFromData(SharedPreferences pref) async{
+    baseCal =  pref.getInt("baseCal") ?? 2700;
+    return _isEmulator().then((res) => isEmulator = res);
   }
 
   Future<void> save() async {
     final pref = await SharedPreferences.getInstance();
-    pref.setDouble("baseCal", baseCal);
+    pref.setInt("baseCal", baseCal);
   }
 }
 
@@ -82,7 +99,7 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               ElevatedButton(onPressed: () async{
                 if(!isSaving){
-                      User().baseCal = double.tryParse(baseColController.text) ?? 2400;
+                      User().baseCal = int.tryParse(baseColController.text) ?? 2400;
                       setState(() { isSaving = true; }); 
                       await User().save();
                       setState(() { isSaving = false; }); 

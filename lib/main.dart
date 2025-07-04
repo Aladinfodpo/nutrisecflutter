@@ -1,45 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
 import 'user.dart';
-import 'food.dart';
-import 'day.dart';
+import 'food_edit.dart';
+import 'day_edit.dart';
+import 'day_food.dart';
 import 'pedo.dart';
+import 'custom_utils.dart';
+import 'notification.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Permission.activityRecognition.request();
+  await requestNotificationPermission();
+  await requestActivityPermission();
+  await requestExactAlarmPermission();
+  await AndroidAlarmManager.initialize();
 
   final prefs = await SharedPreferences.getInstance();
-  User().loadFromData(prefs);
-  await Pedo().loadFromData(prefs);
+  await User().loadFromData(prefs);
+
+  await NotificationHelper().init();
+
+  if (!User().isEmulator) {
+    await Pedo().loadFromData(prefs);
+    await Pedo().ensureAlarms(prefs);
+  }
 
   runApp(const MyApp());
 }
-
-MaterialColor createMaterialColor(Color color) {
-  List<double> strengths = <double>[.05];
-  Map<int, Color> swatch = {};
-  final int r = (color.r*255).toInt(), g = (color.g*255).toInt(), b = (color.b*255).toInt();
-
-  for (int i = 1; i < 10; i++) {
-    strengths.add(0.1 * i);
-  }
-
-  for (var strength in strengths) {
-    final double ds = 0.5 - strength;
-    swatch[(strength * 1000).round()] = Color.fromRGBO(
-      r + ((ds < 0 ? r : (255 - r)) * ds).round(),
-      g + ((ds < 0 ? g : (255 - g)) * ds).round(),
-      b + ((ds < 0 ? b : (255 - b)) * ds).round(),
-      1,
-    );
-  }
-
-  return MaterialColor(color.toARGB32(), swatch);
-}
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -47,11 +36,12 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSwatch(primarySwatch: createMaterialColor(Color.fromRGBO(26, 54, 35, 1))),
+        colorScheme: ColorScheme.fromSwatch(
+          primarySwatch: createMaterialColor(Color.fromRGBO(26, 54, 35, 1)),
+        ),
       ),
       routes: routePages,
       initialRoute: "/",
@@ -60,11 +50,21 @@ class MyApp extends StatelessWidget {
 }
 
 var routePages = {
-      '/' : (BuildContext context) => MainPage(null,),
-      SettingsPage.routeName: (BuildContext context) => MainPage(0),
-      AddFoodPage.routeName: (BuildContext context) => AddFoodPage(food: ((ModalRoute.of(context)?.settings.arguments ?? <String, dynamic>{}) as Map)['food']),
-      EditDayPage.routeName: (BuildContext context) => EditDayPage(day: ((ModalRoute.of(context)?.settings.arguments ?? <String, dynamic>{}) as Map)['day']),
-  };
+  '/': (BuildContext context) => MainPage(null),
+  SettingsPage.routeName: (BuildContext context) => MainPage(0),
+  AddFoodPage.routeName:
+      (BuildContext context) => AddFoodPage(
+        food:
+            ((ModalRoute.of(context)?.settings.arguments ?? <String, dynamic>{})
+                as Map)['food'],
+      ),
+  EditDayPage.routeName:
+      (BuildContext context) => EditDayPage(
+        day:
+            ((ModalRoute.of(context)?.settings.arguments ?? <String, dynamic>{})
+                as Map)['day'],
+      ),
+};
 
 class MainPage extends StatefulWidget {
   const MainPage(this.indexPage, {super.key});
@@ -76,23 +76,22 @@ class MainPage extends StatefulWidget {
 }
 
 const titles = ["Home", "Days", "Foods", "Settings"];
+
 class _MainPageState extends State<MainPage> {
   late final List<Widget> pages;
   int indexDrawer = 0;
-  String title = titles[0];
 
-  void setIndexPage(int i){setState((){indexDrawer = i; title = titles[i]; });}
+  void setIndexPage(int i) {
+    setState(() {
+      indexDrawer = i;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     setIndexPage(widget.indexPage ?? 0);
-    pages = [
-      HomePage(),
-      DaysPage(),
-      FoodsPage(),
-      SettingsPage(),
-    ];
+    pages = [HomePage(), DaysPage(), FoodsPage(), SettingsPage()];
   }
 
   @override
@@ -105,27 +104,46 @@ class _MainPageState extends State<MainPage> {
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
-          children: <Widget>[
-            DrawerHeader(
-              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
-              child: Image.asset("icon.png"),
-            ),
-            ] +List.generate(titles.length, (index){return ListTile(title: Text(titles[index]), onTap: () {setIndexPage(index); Navigator.pop(context);},);}).toList(),
+          children:
+              <Widget>[
+                DrawerHeader(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  child: Image.asset("icon.png"),
+                ),
+              ] +
+              List.generate(titles.length, (index) {
+                return ListTile(
+                  title: Text(titles[index]),
+                  onTap: () {
+                    setIndexPage(index);
+                    Navigator.pop(context);
+                  },
+                );
+              }).toList(),
         ),
       ),
-      body: Center(
-        child: pages[indexDrawer],
-      ),
-      floatingActionButton: indexDrawer == 0 ? FloatingActionButton(
-        onPressed: (){},
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      )
-      : null, // This trailing comma makes auto-formatting nicer for build methods.
+      body: Center(child: pages[indexDrawer]),
+      /*floatingActionButton:
+          indexDrawer == 1
+              ? FloatingActionButton(
+                onPressed: () async {
+                  if (indexDrawer == 1 && mounted) {
+                    Navigator.pushNamed(
+                      context,
+                      EditDayPage.routeName,
+                      arguments: {"day": await Day.createToday()},
+                    );
+                  }
+                },
+                tooltip: 'Increment',
+                child: const Icon(Icons.add),
+              )
+              : null,*/ 
     );
   }
 }
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -144,11 +162,13 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void refresh(){
+  void refresh() {
     setState(() {
       step = null;
     });
-    Pedo().getTodayStep().then((res){setState(() => step = res);});
+    Pedo().safeGetTodayStep().then((res) {
+      setState(() => step = res);
+    });
   }
 
   @override
@@ -157,17 +177,21 @@ class _HomePageState extends State<HomePage> {
     refresh();
   }
 
-
   @override
   Widget build(BuildContext context) {
-    return Center(child: 
-        Padding(padding: EdgeInsets.all(8.0),
-          child: Column(children: [
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(8.0),
+        child: Column(
+          children: [
             const Text("Bienvenue"),
-            step == null ? CircularProgressIndicator() : Text("You have walked ${step!} step today !"),
-            ElevatedButton(onPressed: refresh, child: const Text("Reload"))
-          ])
-        )
-      );
+            step == null
+                ? CircularProgressIndicator()
+                : Text("You have walked ${step!} step today !"),
+            ElevatedButton(onPressed: refresh, child: const Text("Reload")),
+          ],
+        ),
+      ),
+    );
   }
 }
