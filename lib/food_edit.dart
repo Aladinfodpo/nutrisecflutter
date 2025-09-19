@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'day_food.dart';
 
-
 class FoodsPage extends StatefulWidget {
   const FoodsPage({super.key});
 
@@ -548,7 +547,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             glucide:
                                 double.tryParse(glucideController.text) ?? 0,
                           ),
-                        ).then((res) => DayDB().recalculateCal())
+                        )
+                        .then((res) => DayDB().recalculateCal())
                         .then((res) {
                           if (mounted && Navigator.canPop(context)) {
                             Navigator.pop(context, true);

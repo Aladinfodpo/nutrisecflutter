@@ -4,7 +4,9 @@ import 'package:permission_handler/permission_handler.dart';
 MaterialColor createMaterialColor(Color color) {
   List<double> strengths = <double>[.05];
   Map<int, Color> swatch = {};
-  final int r = (color.r*255).toInt(), g = (color.g*255).toInt(), b = (color.b*255).toInt();
+  final int r = (color.r * 255).toInt(),
+      g = (color.g * 255).toInt(),
+      b = (color.b * 255).toInt();
 
   for (int i = 1; i < 10; i++) {
     strengths.add(0.1 * i);
@@ -47,4 +49,18 @@ Future<bool> requestExactAlarmPermission() async {
   return status.isGranted;
 }
 
+Future<bool> requestIgnoreBattery() async {
+  var status = await Permission.ignoreBatteryOptimizations.status;
+  if (!status.isGranted) {
+    status = await Permission.ignoreBatteryOptimizations.request();
+  }
+  return status.isGranted;
+}
 
+Future<bool> requestReminders() async {
+  var status = await Permission.reminders.status;
+  if (!status.isGranted) {
+    status = await Permission.reminders.request();
+  }
+  return status.isGranted;
+}

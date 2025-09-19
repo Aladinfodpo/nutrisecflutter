@@ -46,87 +46,87 @@ class _DaysPageState extends State<DaysPage> {
                     context,
                     EditDayPage.routeName,
                     arguments: {"day": await Day.createToday()},
-                  ).then((value) => refresh(),);
+                  ).then((value) => refresh());
                 }
               },
               child: Icon(Icons.add),
             ),
-            Expanded(child:
-            ListView(
-              scrollDirection: Axis.vertical,
-              children:
-                  List.generate(days.length, (index) {
-                    final day = days[index];
-                    return SizedBox(
-                      width: double.infinity,
-                      child: InkWell(
-                        onTap:
-                            () => Navigator.pushNamed(
-                              context,
-                              EditDayPage.routeName,
-                              arguments: {"day": day},
-                            ).then((value) => refresh()),
-                        child: Dismissible(
-                          confirmDismiss:
-                              (direction) => showDialog(
-                                context: context,
-                                builder:
-                                    ((context) => AlertDialog(
-                                      title: Text('Confirmation'),
-                                      content: Text(
-                                        'Do you want to delete this day ?',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed:
-                                              () => Navigator.of(
-                                                context,
-                                              ).pop(false),
-                                          child: Text('No'),
+            Expanded(
+              child: ListView(
+                scrollDirection: Axis.vertical,
+                children:
+                    List.generate(days.length, (index) {
+                      final day = days[index];
+                      return SizedBox(
+                        width: double.infinity,
+                        child: InkWell(
+                          onTap:
+                              () => Navigator.pushNamed(
+                                context,
+                                EditDayPage.routeName,
+                                arguments: {"day": day},
+                              ).then((value) => refresh()),
+                          child: Dismissible(
+                            confirmDismiss:
+                                (direction) => showDialog(
+                                  context: context,
+                                  builder:
+                                      ((context) => AlertDialog(
+                                        title: Text('Confirmation'),
+                                        content: Text(
+                                          'Do you want to delete this day ?',
                                         ),
-                                        TextButton(
-                                          onPressed:
-                                              () => Navigator.of(
-                                                context,
-                                              ).pop(true),
-                                          child: Text('Yes'),
-                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.of(
+                                                  context,
+                                                ).pop(false),
+                                            child: Text('No'),
+                                          ),
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.of(
+                                                  context,
+                                                ).pop(true),
+                                            child: Text('Yes'),
+                                          ),
+                                        ],
+                                      )),
+                                ),
+                            key: ValueKey<int>(day.getID()),
+                            direction: DismissDirection.horizontal,
+                            onDismissed:
+                                (direction) => setState(() {
+                                  DayDB().deleteDay(day.getID());
+                                  days.removeAt(index);
+                                }),
+                            child: Card(
+                              child: Padding(
+                                padding: EdgeInsets.all(6.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(day.getTitle()),
+                                        Spacer(),
+                                        Text("${day.steps} steps"),
                                       ],
-                                    )),
-                              ),
-                          key: ValueKey<int>(day.getID()),
-                          direction: DismissDirection.horizontal,
-                          onDismissed:
-                              (direction) => setState(() {
-                                DayDB().deleteDay(day.getID());
-                                days.removeAt(index);
-                              }),
-                          child: Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(6.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(day.getTitle()),
-                                      Spacer(),
-                                      Text("${day.steps} steps"),
-                                    ],
-                                  ),
-                                  Text(
-                                    '${day.calories}/${User().baseCal} kcal',
-                                  ),
-                                ],
+                                    ),
+                                    Text(
+                                      '${day.calories}/${User().baseCal} kcal',
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
-            )),
-            
+                      );
+                    }).toList(),
+              ),
+            ),
           ],
         );
   }

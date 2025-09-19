@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'user.dart';
 import 'food_edit.dart';
@@ -10,22 +10,29 @@ import 'pedo.dart';
 import 'custom_utils.dart';
 import 'notification.dart';
 
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    if (task == "midnightTask") {
+      Pedo.resetStepsMidnight();
+    }
+    return Future.value(true);
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await requestNotificationPermission();
   await requestActivityPermission();
-  await requestExactAlarmPermission();
-  await AndroidAlarmManager.initialize();
+  await requestReminders();
+  await Workmanager().initialize(callbackDispatcher);
+  await NotificationHelper().init();
 
   final prefs = await SharedPreferences.getInstance();
   await User().loadFromData(prefs);
-
-  await NotificationHelper().init();
-
-  if (!User().isEmulator) {
-    await Pedo().loadFromData(prefs);
-    await Pedo().ensureAlarms(prefs);
-  }
+  await Pedo().loadFromData(prefs);
+  await Pedo().ensureAlarms(prefs, true);
+  await Pedo().treatLastReset();
 
   runApp(const MyApp());
 }
@@ -140,7 +147,7 @@ class _MainPageState extends State<MainPage> {
                 tooltip: 'Increment',
                 child: const Icon(Icons.add),
               )
-              : null,*/ 
+              : null,*/
     );
   }
 }
@@ -166,7 +173,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       step = null;
     });
-    Pedo().safeGetTodayStep().then((res) {
+    Pedo().getTodayStep().then((res) {
       setState(() => step = res);
     });
   }
