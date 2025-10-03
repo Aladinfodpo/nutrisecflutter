@@ -36,10 +36,16 @@ class Pedo {
     }
   }
 
+  Future<void> resetAlarms(SharedPreferences pref) async {
+    pref.remove("hasAlarm");
+    ensureAlarms(pref);
+  }
+
   Future<bool> _isEmulator() async {
     final deviceInfo = DeviceInfoPlugin();
-
-    if (Platform.isAndroid) {
+    if (Platform.isWindows) {
+      return true;
+    } else if (Platform.isAndroid) {
       final androidInfo = await deviceInfo.androidInfo;
       return !androidInfo.isPhysicalDevice;
     } else if (Platform.isIOS) {
@@ -115,6 +121,9 @@ class Pedo {
     if ((pref.getBool("hasAlarm") ?? false) && !forceAlarm) {
       return Future<void>.value();
     }
+
+    pref.setBool("hasAlarm", true);
+
     final now = DateTime.now();
     final tomorrowMidnight = DateTime(now.year, now.month, now.day + 1);
 

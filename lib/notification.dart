@@ -20,8 +20,9 @@ class NotificationHelper {
 
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
+      const WindowsInitializationSettings initializationSettingsWindows = WindowsInitializationSettings(appName: "Nutrisec", appUserModelId: 'nutrisec.nutrisec.nutrisec', guid: "013bd36a-5950-4ea4-9ddc-98e922968aa5");
       final InitializationSettings initializationSettings =
-          InitializationSettings(android: initializationSettingsAndroid);
+          InitializationSettings(android: initializationSettingsAndroid, windows: initializationSettingsWindows);
 
       isInit = true;
       return flutterLocalNotificationsPlugin

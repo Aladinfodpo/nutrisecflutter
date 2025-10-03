@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:nutrisec/stats.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'stats.dart';
 import 'user.dart';
 import 'food_edit.dart';
 import 'day_edit.dart';
@@ -9,6 +11,7 @@ import 'day_food.dart';
 import 'pedo.dart';
 import 'custom_utils.dart';
 import 'notification.dart';
+import 'dart:io';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -25,14 +28,18 @@ void main() async {
   await requestNotificationPermission();
   await requestActivityPermission();
   await requestReminders();
-  await Workmanager().initialize(callbackDispatcher);
+
   await NotificationHelper().init();
 
   final prefs = await SharedPreferences.getInstance();
   await User().loadFromData(prefs);
   await Pedo().loadFromData(prefs);
-  await Pedo().ensureAlarms(prefs, true);
-  await Pedo().treatLastReset();
+
+  if (Platform.isAndroid) {
+    await Workmanager().initialize(callbackDispatcher);
+    //await Pedo().ensureAlarms(prefs, true);
+    await Pedo().treatLastReset();
+  }
 
   runApp(const MyApp());
 }
@@ -59,6 +66,7 @@ class MyApp extends StatelessWidget {
 var routePages = {
   '/': (BuildContext context) => MainPage(null),
   SettingsPage.routeName: (BuildContext context) => MainPage(0),
+  StatsPage.routeName: (BuildContext context) => StatsPage(),
   AddFoodPage.routeName:
       (BuildContext context) => AddFoodPage(
         food:
@@ -82,7 +90,7 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-const titles = ["Home", "Days", "Foods", "Settings"];
+const titles = ["Home", "Days", "Stats", "Foods", "Settings"];
 
 class _MainPageState extends State<MainPage> {
   late final List<Widget> pages;
@@ -98,7 +106,7 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     setIndexPage(widget.indexPage ?? 0);
-    pages = [HomePage(), DaysPage(), FoodsPage(), SettingsPage()];
+    pages = [HomePage(), DaysPage(), StatsPage(), FoodsPage(), SettingsPage()];
   }
 
   @override
@@ -162,6 +170,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int? step;
   _HomePageState();
+  List<Day> days = [];
+  Day? firstDay;
 
   @override
   void dispose() {
@@ -169,7 +179,7 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void refresh() {
+  void refreshStep() {
     setState(() {
       step = null;
     });
@@ -178,10 +188,27 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void refreshDays() {
+    setState(() {
+      days = [];
+    });
+    DayDB().getDays(number: 5).then((value) {
+      setState(() {
+        days = value.reversed.toList();
+      });
+    });
+    DayDB().getFirstDay().then((value){
+      setState(() {
+        firstDay = value;
+      });
+  });
+  }
+
   @override
   void initState() {
     super.initState();
-    refresh();
+    refreshStep();
+    refreshDays();
   }
 
   @override
@@ -191,11 +218,35 @@ class _HomePageState extends State<HomePage> {
         padding: EdgeInsets.all(8.0),
         child: Column(
           children: [
-            const Text("Bienvenue"),
+            SizedBox(height: 20),
             step == null
                 ? CircularProgressIndicator()
                 : Text("You have walked ${step!} step today !"),
-            ElevatedButton(onPressed: refresh, child: const Text("Reload")),
+            ElevatedButton(onPressed: refreshStep, child: const Text("Reload")),
+            SizedBox(height: 20),
+            Card(
+              child: days.isEmpty ? const Text("No weight data") : Column(
+                children: [
+                  Text("Weight over the last ${days.length} days"),
+                  Padding(
+                    padding: EdgeInsetsGeometry.directional(start: 8.0),
+                    child: CustomPaint(
+                      size: Size(200, 200),
+                      painter: CurvePainter(
+                        days
+                            .map(
+                              (day) =>
+                                  DataCurve(day.getID().toDouble(), day.poids),
+                            )
+                            .toList(),
+                            firstDay == null ? null : firstDay!.poids - User().objectif.toDouble()
+                      ),
+                    ),
+                  ),
+                  firstDay == null ? SizedBox() : Text("Objectif reached in ${getTimeToObj(firstDay!, days.last).inDays} days")
+                ],
+              ),
+            ),
           ],
         ),
       ),

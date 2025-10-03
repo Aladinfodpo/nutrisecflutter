@@ -5,6 +5,7 @@ import 'pedo.dart';
 
 class User {
   int baseCal = 0;
+  int objectif = 0;
 
   static final User _singleton = User._internal();
 
@@ -16,11 +17,13 @@ class User {
 
   Future<void> loadFromData(SharedPreferences pref) async {
     baseCal = pref.getInt("baseCal") ?? 2700;
+    objectif = pref.getInt("objectif") ?? 10;
   }
 
   Future<void> save() async {
     final pref = await SharedPreferences.getInstance();
     pref.setInt("baseCal", baseCal);
+    pref.setInt("objectif", objectif);
   }
 }
 
@@ -35,7 +38,10 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final baseColController = TextEditingController(
-    text: User().baseCal.toStringAsFixed(0),
+    text: User().baseCal.toString(),
+  );
+  final objectifController = TextEditingController(
+    text: User().objectif.toString(),
   );
 
   bool isSaving = false;
@@ -45,6 +51,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void dispose() {
     // Clean up the controller when the widget is disposed.
     baseColController.dispose();
+    objectifController.dispose();
     super.dispose();
   }
 
@@ -74,6 +81,24 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: 100, child: Text("Objectif (-kg) :")),
+                SizedBox(
+                  width: 70,
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: TextField(
+                        controller: objectifController,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
             SizedBox(height: 50),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -83,6 +108,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     if (!isSaving) {
                       User().baseCal =
                           int.tryParse(baseColController.text) ?? 2400;
+                          User().objectif = int.tryParse(objectifController.text) ?? 10;
+
                       setState(() {
                         isSaving = true;
                       });
@@ -104,6 +131,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 Pedo().treatLastReset(true);
               },
               child: const Text("Step reset yesterday"),
+            ),
+            TextButton(
+              onPressed: () async {
+                Pedo().resetAlarms(await SharedPreferences.getInstance());
+              },
+              child: const Text("Reset alarms"),
             ),
           ],
         ),

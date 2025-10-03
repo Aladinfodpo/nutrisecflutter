@@ -82,12 +82,15 @@ class Food {
 class FoodEaten {
   final int id;
   final int quantity;
+  late final int hour;
 
-  const FoodEaten(this.id, this.quantity);
+  FoodEaten(this.id, this.quantity, [int? inHour]){
+    hour = inHour ?? DateTime.now().hour;
+  }
 
-  Map<String, dynamic> toJson() => {'id': id, 'quantity': quantity};
+  Map<String, dynamic> toJson() => {'id': id, 'quantity': quantity, 'hour': hour};
   factory FoodEaten.fromJson(Map<String, dynamic> json) {
-    return FoodEaten(json['id'] as int, json['quantity'] as int);
+    return FoodEaten(json['id'] as int, json['quantity'] as int, (json['hour'] ?? 0) as int);
   }
 
   Future<Food> calculate() async {
@@ -242,6 +245,7 @@ class Day {
     this.poids = 0,
     this.calories = 0,
     this.steps = 0,
+    String workout = ""
   });
 
   Map<String, Object?> toMap() {
@@ -255,6 +259,7 @@ class Day {
       "poids": poids,
       "calories": calories,
       "steps": steps,
+      "workout": "todo"
     };
   }
 
@@ -270,6 +275,7 @@ class Day {
       poids: map['poids'] as double,
       calories: map['calories'] as int,
       steps: map['steps'] as int,
+      workout: (map['workout'] ?? "") as String
     );
   }
 
@@ -324,10 +330,15 @@ class DayDB {
   Future<Database> _initDb() async {
     return openDatabase(
       join(await getDatabasesPath(), 'day.db'),
-      version: 1,
+      version: 2,
+      onUpgrade: (db, oldVersion, newVersion) {
+        if(oldVersion == 1){
+          return db.execute("ALTER TABLE days ADD workout TEXT;");
+        }
+      },
       onCreate: (db, version) {
         return db.execute(
-          'CREATE TABLE days(id INTEGER PRIMARY KEY, day INTEGER, month INTEGER, year INTEGER, foods TEXT, cardio INTEGER, poids REAL, calories INTEGER, steps INTEGER)',
+          'CREATE TABLE days(id INTEGER PRIMARY KEY, day INTEGER, month INTEGER, year INTEGER, foods TEXT, cardio INTEGER, poids REAL, calories INTEGER, steps INTEGER, workout TEXT)',
         );
       },
     );
@@ -351,6 +362,17 @@ class DayDB {
     );
 
     return [for (final map in dayMaps) Day.fromMap(map)];
+  }
+
+  Future<Day?> getFirstDay() async {
+    final db = await database;
+    final List<Map<String, Object?>> dayMaps = await db.query(
+      'days',
+      limit: 1,
+      orderBy: "id",
+    );
+
+    return [for (final map in dayMaps) Day.fromMap(map)].firstOrNull;
   }
 
   Future<Day?> getDay(int id) async {

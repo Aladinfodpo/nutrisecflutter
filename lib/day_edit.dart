@@ -41,11 +41,26 @@ class _DaysPageState extends State<DaysPage> {
           children: [
             ElevatedButton(
               onPressed: () async {
+                Day? day = await DayDB().getDay(Day.getTodayId());
+                if(day != null){
+                  final DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
+                    firstDate: DateTime(2025),
+                    lastDate: DateTime(2100),
+                  );
+                  if (pickedDate != null) {
+                    day = await DayDB().getDay(Day.calculateID(pickedDate.day, pickedDate.month, pickedDate.year)) ?? Day(pickedDate.day, pickedDate.month, pickedDate.year, []);
+                  }
+                }else{
+                  day = await Day.createToday();
+                }
+
                 if (mounted) {
                   Navigator.pushNamed(
                     context,
                     EditDayPage.routeName,
-                    arguments: {"day": await Day.createToday()},
+                    arguments: {"day": day},
                   ).then((value) => refresh());
                 }
               },
@@ -149,17 +164,18 @@ class _EditDayPageState extends State<EditDayPage> {
   late int year;
 
   late Food allMeals;
-  late int steps;
 
   final quantityController = TextEditingController(text: "0");
+  final hourController = TextEditingController(text: DateTime.now().hour.toString());
   final poidsController = TextEditingController(text: "0");
   final cardioController = TextEditingController(text: "0");
+  final stepsController = TextEditingController(text: "0");
 
   late List<FoodEaten> foodEatens;
   List<Food> foods = [];
 
-  int? currentFoodQuantity;
   Food? currentFood;
+  int currentQuantity = 0;
 
   int indexPage = 0;
 
@@ -192,9 +208,11 @@ class _EditDayPageState extends State<EditDayPage> {
     year = widget.day.year;
 
     cardioController.text = widget.day.cardio.toString();
-    steps = widget.day.steps;
+    stepsController.text = widget.day.steps.toString();
     poidsController.text = widget.day.poids.toStringAsFixed(1);
     allMeals = Food("", calories: widget.day.calories);
+
+    quantityController.addListener(() => setState(() => currentQuantity = (int.tryParse(quantityController.text) ?? 0)));
 
     resetFoods();
   }
@@ -211,7 +229,7 @@ class _EditDayPageState extends State<EditDayPage> {
               year,
               foodEatens,
               calories: allMeals.calories,
-              steps: steps,
+              steps: int.tryParse(stepsController.text) ?? 0,
               cardio: int.tryParse(cardioController.text) ?? 0,
               poids: double.tryParse(poidsController.text) ?? 0,
             ),
@@ -379,8 +397,8 @@ class _EditDayPageState extends State<EditDayPage> {
                                                   if (direction ==
                                                       DismissDirection.down) {
                                                     currentFood = food;
-                                                    currentFoodQuantity =
-                                                        food.defQuantity;
+                                                    quantityController.text = 
+                                                        foodEaten.quantity.toString();
                                                   }
                                                   setState(() {
                                                     foodEatens.removeAt(index);
@@ -462,7 +480,7 @@ class _EditDayPageState extends State<EditDayPage> {
                       ),
                       SizedBox(height: 30),
                       Text(
-                        "${allMeals.calories}${currentFood == null ? "" : " + ${((int.tryParse(quantityController.text) ?? 0) * currentFood!.calories / 100).toInt()}"}${int.tryParse(cardioController.text) == null || int.tryParse(cardioController.text) == 0 ? "" : " - ${int.tryParse(cardioController.text)}"} kcal",
+                        "${allMeals.calories}${currentFood == null ? "" : " + ${(currentQuantity * currentFood!.calories / 100).toInt()}"}${int.tryParse(cardioController.text) == null || int.tryParse(cardioController.text) == 0 ? "" : " - ${int.tryParse(cardioController.text)}"} kcal",
                       ),
                       SizedBox(height: 30),
                       SizedBox(
@@ -561,11 +579,28 @@ class _EditDayPageState extends State<EditDayPage> {
                                         width: 100,
                                         child: TextField(
                                           controller: quantityController,
+                                          keyboardType: TextInputType.number,
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
                                     ],
                                   ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 100,
+                                        child: const Text("Hour"),
+                                      ),
+                                      SizedBox(
+                                        width: 100,
+                                        child: TextField(
+                                          controller: hourController,
+                                          keyboardType: TextInputType.number,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ]),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -578,7 +613,7 @@ class _EditDayPageState extends State<EditDayPage> {
                                         child: Text(
                                           currentFood == null
                                               ? ""
-                                              : '${((int.tryParse(quantityController.text) ?? 0) * currentFood!.calories / 100).toInt()} kcal',
+                                              : '${(currentQuantity * currentFood!.calories / 100).toInt()} kcal',
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
@@ -587,19 +622,15 @@ class _EditDayPageState extends State<EditDayPage> {
                                   ElevatedButton(
                                     onPressed:
                                         currentFood == null ||
-                                                int.tryParse(
-                                                      quantityController.text,
-                                                    ) ==
-                                                    null
+                                                currentQuantity == 0
                                             ? null
                                             : () {
                                               setState(() {
                                                 foodEatens.add(
                                                   FoodEaten(
                                                     currentFood!.id!,
-                                                    int.parse(
-                                                      quantityController.text,
-                                                    ),
+                                                    currentQuantity,
+                                                    int.tryParse(hourController.text)
                                                   ),
                                                 );
                                                 foods.add(currentFood!);
@@ -633,8 +664,8 @@ class _EditDayPageState extends State<EditDayPage> {
                             ),
                             SizedBox(
                               width: 100,
-                              child: Text(
-                                "$steps",
+                              child: TextField(
+                                controller: stepsController,
                                 textAlign: TextAlign.center,
                               ),
                             ),
